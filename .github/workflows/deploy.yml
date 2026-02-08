@@ -1,0 +1,32 @@
+name: CI/CD Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd ~
+          if [ ! -d ml-fastapi-docker ]; then
+            git clone https://github.com/damodaramt/ml-fastapi-docker.git
+          fi
+          cd ml-fastapi-docker
+          git pull origin main
+          docker stop ml-fastapi || true
+          docker rm ml-fastapi || true
+          docker build -t ml-fastapi .
+          docker run -d -p 8000:8000 --name ml-fastapi ml-fastapi
